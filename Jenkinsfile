@@ -1,67 +1,220 @@
 pipeline {
-    agent {
-        label 'windows' // Use a Windows agent with Node.js and IIS
+    agent none
+    parameters {
+        choice(name: 'TARGET_AGENT', choices: ['All Agents', 'Agent 1', 'Agent 2', 'Agent 3', 'Agent 4', 'Agent 5'], description: 'Select which agent(s) to deploy to')
     }
-
     environment {
         NODEJS_HOME = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
-        PATH = "${NODEJS_HOME}/bin:${env.PATH}"
         REPO_URL = 'https://github.com/AslinDhurai/vite.git'
         BRANCH = 'main'
-        IIS_SITE_PATH = 'C:\\inetpub\\wwwroot\\my-app' // IIS website physical path
+        IIS_SITE_PATH = 'C:\\inetpub\\wwwroot\\my-vite-app'
         NODE_OPTIONS = "--openssl-legacy-provider"
     }
-
+    
     stages {
-        stage('Checkout') {
-            steps {
-                git(
-                    url: env.REPO_URL,
-                    branch: env.BRANCH,
-                    credentialsId: 'git-token' // Create in Jenkins Credentials
-                )
-            }
-        }
+        stage('Deploy to Agents') {
+            parallel {
+                stage('Deploy to Agent 1') {
+                    when {
+                        expression { params.TARGET_AGENT == 'Agent 1' || params.TARGET_AGENT == 'All Agents' }
+                    }
+                    steps {
+                        script {
+                            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                                if (!isAgentOnline('Aslin-agent')) {
+                                    emailext to: 'demojenkinscicd@gmail.com',
+                                             subject: "Vite Deployment failed: Agent 1 offline",
+                                             body: "Agent 1 (Aslin-agent) is offline, deployment could not proceed."
+                                    error "Agent 1 is offline."
+                                } else {
+                                    node('Aslin-agent') {
+                                        withEnv(["PATH=C:\\Windows\\System32;${NODEJS_HOME}\\bin;${env.PATH}"]) {
+                                            timeout(time: 15, unit: 'MINUTES') {
+                                                bat """
+                                                    if exist vite rd /s /q vite
+                                                    git clone ${REPO_URL} vite
+                                                    cd vite
+                                                    npm install
+                                                    npm run build
+                                                    if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
+                                                    mkdir "${IIS_SITE_PATH}"
+                                                    xcopy dist\\* "${IIS_SITE_PATH}\\" /E /I /Y
+                                                """
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
-        stage('Install Dependencies') {
-            steps {
-                bat 'dir'
-                bat 'npm install'
-            }
-        }
+                stage('Deploy to Agent 2') {
+                    when {
+                        expression { params.TARGET_AGENT == 'Agent 2' || params.TARGET_AGENT == 'All Agents' }
+                    }
+                    steps {
+                        script {
+                            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                                if (!isAgentOnline('Shahana-Agent')) {
+                                    emailext to: 'demojenkinscicd@gmail.com',
+                                             subject: "Vite Deployment failed: Agent 2 offline",
+                                             body: "Agent 2 (Shahana-Agent) is offline, deployment could not proceed."
+                                    error "Agent 2 is offline."
+                                } else {
+                                    node('Shahana-Agent') {
+                                        withEnv(["PATH=C:\\Windows\\System32;${NODEJS_HOME}\\bin;${env.PATH}"]) {
+                                            timeout(time: 15, unit: 'MINUTES') {
+                                                bat """
+                                                    if exist vite rd /s /q vite
+                                                    git clone ${REPO_URL} vite
+                                                    cd vite
+                                                    npm install
+                                                    npm run build
+                                                    if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
+                                                    mkdir "${IIS_SITE_PATH}"
+                                                    xcopy dist\\* "${IIS_SITE_PATH}\\" /E /I /Y
+                                                """
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
-        stage('Build') {
-            steps {
-                bat 'npm run build' // Assumes "build" script in package.json
-            }
-        }
+                stage('Deploy to Agent 3') {
+                    when {
+                        expression { params.TARGET_AGENT == 'Agent 3' || params.TARGET_AGENT == 'All Agents' }
+                    }
+                    steps {
+                        script {
+                            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                                if (!isAgentOnline('Archana-agent')) {
+                                    emailext to: 'demojenkinscicd@gmail.com',
+                                             subject: "Vite Deployment failed: Agent 3 offline",
+                                             body: "Agent 3 (Archana-agent) is offline, deployment could not proceed."
+                                    error "Agent 3 is offline."
+                                } else {
+                                    node('Archana-agent') {
+                                        withEnv(["PATH=C:\\Windows\\System32;${NODEJS_HOME}\\bin;${env.PATH}"]) {
+                                            timeout(time: 15, unit: 'MINUTES') {
+                                                bat """
+                                                    if exist vite rd /s /q vite
+                                                    git clone ${REPO_URL} vite
+                                                    cd vite
+                                                    npm install
+                                                    npm run build
+                                                    if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
+                                                    mkdir "${IIS_SITE_PATH}"
+                                                    xcopy dist\\* "${IIS_SITE_PATH}\\" /E /I /Y
+                                                """
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
-        stage('Deploy to IIS') {
-            steps {
-                // Stop IIS site (optional)
-                // bat 'appcmd stop site "Default Web Site"'
+                stage('Deploy to Agent 4') {
+                    when {
+                        expression { params.TARGET_AGENT == 'Agent 4' || params.TARGET_AGENT == 'All Agents' }
+                    }
+                    steps {
+                        script {
+                            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                                if (!isAgentOnline('Dharshana-agent')) {
+                                    emailext to: 'demojenkinscicd@gmail.com',
+                                             subject: "Vite Deployment failed: Agent 4 offline",
+                                             body: "Agent 4 (Dharshana-agent) is offline, deployment could not proceed."
+                                    error "Agent 4 is offline."
+                                } else {
+                                    node('Dharshana-agent') {
+                                        withEnv(["PATH=C:\\Windows\\System32;${NODEJS_HOME}\\bin;${env.PATH}"]) {
+                                            timeout(time: 15, unit: 'MINUTES') {
+                                                bat """
+                                                    if exist vite rd /s /q vite
+                                                    git clone ${REPO_URL} vite
+                                                    cd vite
+                                                    npm install
+                                                    npm run build
+                                                    if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
+                                                    mkdir "${IIS_SITE_PATH}"
+                                                    xcopy dist\\* "${IIS_SITE_PATH}\\" /E /I /Y
+                                                """
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
-                // Delete old files
-                bat "if exist ${IIS_SITE_PATH} rmdir /s /q ${IIS_SITE_PATH}"
-
-                // Create directory if not exists
-                bat "mkdir ${IIS_SITE_PATH}"
-
-                // Copy built files (assuming build outputs to 'dist' folder)
-                bat "xcopy /E /Y dist\\* ${IIS_SITE_PATH}\\"
-
-                // Start IIS site
-                // bat 'appcmd start site "Default Web Site"'
+                stage('Deploy to Agent 5') {
+                    when {
+                        expression { params.TARGET_AGENT == 'Agent 5' || params.TARGET_AGENT == 'All Agents' }
+                    }
+                    steps {
+                        script {
+                            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                                if (!isAgentOnline('Annie-Agent')) {
+                                    emailext to: 'demojenkinscicd@gmail.com',
+                                             subject: "Vite Deployment failed: Agent 5 offline",
+                                             body: "Agent 5 (Annie-Agent) is offline, deployment could not proceed."
+                                    error "Agent 5 is offline."
+                                } else {
+                                    node('Annie-Agent') {
+                                        withEnv(["PATH=C:\\Windows\\System32;${NODEJS_HOME}\\bin;${env.PATH}"]) {
+                                            timeout(time: 15, unit: 'MINUTES') {
+                                                bat """
+                                                    if exist vite rd /s /q vite
+                                                    git clone ${REPO_URL} vite
+                                                    cd vite
+                                                    npm install
+                                                    npm run build
+                                                    if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
+                                                    mkdir "${IIS_SITE_PATH}"
+                                                    xcopy dist\\* "${IIS_SITE_PATH}\\" /E /I /Y
+                                                """
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
-
+    
     post {
         success {
-            echo 'Deployment to IIS completed successfully!'
+            echo 'Vite app deployment completed successfully!'
+            emailext to: 'demojenkinscicd@gmail.com',
+                     subject: "Successful Vite Deployment to ${params.TARGET_AGENT}",
+                     body: "Vite application was successfully deployed to selected agents."
         }
         failure {
-            echo 'Deployment failed!'
+            echo 'Some deployments may have failed. Check individual stages for details.'
+            emailext to: 'demojenkinscicd@gmail.com',
+                     subject: "Partial/Failed Vite Deployment to ${params.TARGET_AGENT}",
+                     body: "There were issues deploying the Vite application. Check Jenkins build logs for details."
         }
     }
+}
+
+@NonCPS
+def isAgentOnline(String name) {
+    def agent = Jenkins.instance.getNode(name)
+    if (agent == null) {
+        echo "Agent ${name} does not exist."
+        return false
+    }
+    def computer = agent.toComputer()
+    return (computer != null && computer.isOnline())
 }
