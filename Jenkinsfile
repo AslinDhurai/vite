@@ -35,9 +35,10 @@ pipeline {
                                             cd vite
                                             echo VITE_API_URL=${AGENT1_API_URL} > .env
                                             npm install && npm run build
+                                            cd..
                                             if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
                                             mkdir "${IIS_SITE_PATH}"
-                                            xcopy dist\\* "${IIS_SITE_PATH}\\" /E /I /Y
+                                            xcopy vite\\dist\\* "${IIS_SITE_PATH}\\" /E /I /Y
                                         """
                                     }
                                 }
