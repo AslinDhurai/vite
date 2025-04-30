@@ -9,6 +9,12 @@ pipeline {
         BRANCH = 'main'
         IIS_SITE_PATH = 'C:\\inetpub\\wwwroot\\my-app'
         NODE_OPTIONS = "--openssl-legacy-provider"
+        // Agent-specific API URLs
+        AGENT1_API_URL = 'http://192.168.52.33:8084'
+        AGENT2_API_URL = 'http://192.168.52.84:8084'
+        AGENT3_API_URL = 'http://192.168.52.25:8084'
+        AGENT4_API_URL = 'http://192.168.52.56:8084'
+        AGENT5_API_URL = 'http://192.168.52.117:8084'
     }
     
     stages {
@@ -34,6 +40,7 @@ pipeline {
                                                     if exist vite rd /s /q vite
                                                     git clone ${REPO_URL} vite
                                                     cd vite
+                                                    echo VITE_API_URL=${AGENT1_API_URL} > .env
                                                     npm install
                                                     npm run build
                                                     if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
@@ -69,6 +76,7 @@ pipeline {
                                                     if exist vite rd /s /q vite
                                                     git clone ${REPO_URL} vite
                                                     cd vite
+                                                    echo VITE_API_URL=${AGENT2_API_URL} > .env
                                                     npm install
                                                     npm run build
                                                     if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
@@ -104,6 +112,7 @@ pipeline {
                                                     if exist vite rd /s /q vite
                                                     git clone ${REPO_URL} vite
                                                     cd vite
+                                                    echo VITE_API_URL=${AGENT3_API_URL} > .env
                                                     npm install
                                                     npm run build
                                                     if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
@@ -139,6 +148,7 @@ pipeline {
                                                     if exist vite rd /s /q vite
                                                     git clone ${REPO_URL} vite
                                                     cd vite
+                                                    echo VITE_API_URL=${AGENT4_API_URL} > .env
                                                     npm install
                                                     npm run build
                                                     if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
@@ -174,6 +184,7 @@ pipeline {
                                                     if exist vite rd /s /q vite
                                                     git clone ${REPO_URL} vite
                                                     cd vite
+                                                    echo VITE_API_URL=${AGENT5_API_URL} > .env
                                                     npm install
                                                     npm run build
                                                     if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
