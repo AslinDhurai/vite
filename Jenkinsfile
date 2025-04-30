@@ -25,7 +25,7 @@ pipeline {
                             deployReactAppToAgent(
                                 agentLabel: 'windows',
                                 agentName: 'Aslin-agent',
-                                viteApiUrl: 'http://192.168.52.33:8084'
+                                viteApiUrl: 'http://192.168.52.33:8085'
                             )
                         }
                     }
