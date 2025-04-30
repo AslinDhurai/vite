@@ -74,3 +74,4 @@ def isAgentOnline(String name) {
     }
     def computer = agent.toComputer()
     return (computer != null && computer.isOnline())
+}
