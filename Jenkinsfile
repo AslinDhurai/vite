@@ -4,7 +4,6 @@ pipeline {
         choice(name: 'TARGET_AGENT', choices: ['All Agents', 'Agent 1', 'Agent 2', 'Agent 3', 'Agent 4', 'Agent 5'], description: 'Select which agent(s) to deploy to')
     }
     environment {
-        NODEJS_HOME = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
         REPO_URL = 'https://github.com/AslinDhurai/vite.git'
         BRANCH = 'main'
         IIS_SITE_PATH = 'C:\\inetpub\\wwwroot\\my-app'
@@ -34,7 +33,7 @@ pipeline {
                                     error "Agent 1 is offline."
                                 } else {
                                     node('Aslin-agent') {
-                                        withEnv(["PATH=C:\\Windows\\System32;${NODEJS_HOME}\\bin;${env.PATH}"]) {
+                                        withEnv(["PATH+NODE=${tool 'NodeJS'}\\bin"]) {
                                             timeout(time: 15, unit: 'MINUTES') {
                                                 bat """
                                                     if exist vite rd /s /q vite
@@ -70,7 +69,7 @@ pipeline {
                                     error "Agent 2 is offline."
                                 } else {
                                     node('Shahana-Agent') {
-                                        withEnv(["PATH=C:\\Windows\\System32;${NODEJS_HOME}\\bin;${env.PATH}"]) {
+                                        withEnv(["PATH+NODE=${tool 'NodeJS'}\\bin"]) {
                                             timeout(time: 15, unit: 'MINUTES') {
                                                 bat """
                                                     if exist vite rd /s /q vite
@@ -106,7 +105,7 @@ pipeline {
                                     error "Agent 3 is offline."
                                 } else {
                                     node('Archana-agent') {
-                                        withEnv(["PATH=C:\\Windows\\System32;${NODEJS_HOME}\\bin;${env.PATH}"]) {
+                                        withEnv(["PATH+NODE=${tool 'NodeJS'}\\bin"]) {
                                             timeout(time: 15, unit: 'MINUTES') {
                                                 bat """
                                                     if exist vite rd /s /q vite
@@ -142,7 +141,7 @@ pipeline {
                                     error "Agent 4 is offline."
                                 } else {
                                     node('Dharshana-agent') {
-                                        withEnv(["PATH=C:\\Windows\\System32;${NODEJS_HOME}\\bin;${env.PATH}"]) {
+                                        withEnv(["PATH+NODE=${tool 'NodeJS'}\\bin"]) {
                                             timeout(time: 15, unit: 'MINUTES') {
                                                 bat """
                                                     if exist vite rd /s /q vite
@@ -178,7 +177,7 @@ pipeline {
                                     error "Agent 5 is offline."
                                 } else {
                                     node('Annie-Agent') {
-                                        withEnv(["PATH=C:\\Windows\\System32;${NODEJS_HOME}\\bin;${env.PATH}"]) {
+                                        withEnv(["PATH+NODE=${tool 'NodeJS'}\\bin"]) {
                                             timeout(time: 15, unit: 'MINUTES') {
                                                 bat """
                                                     if exist vite rd /s /q vite
