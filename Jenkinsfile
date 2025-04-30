@@ -1,5 +1,7 @@
 pipeline {
-    agent none
+    agent {
+        label 'main'
+    }
     parameters {
         choice(name: 'TARGET_AGENT', choices: ['All Agents', 'Agent 1', 'Agent 2', 'Agent 3', 'Agent 4', 'Agent 5'], description: 'Select which agent(s) to deploy to')
     }
