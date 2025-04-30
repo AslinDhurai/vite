@@ -7,7 +7,7 @@ pipeline {
         NODEJS_HOME = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
         REPO_URL = 'https://github.com/AslinDhurai/vite.git'
         BRANCH = 'main'
-        IIS_SITE_PATH = 'C:\\inetpub\\wwwroot\\my-vite-app'
+        IIS_SITE_PATH = 'C:\\inetpub\\wwwroot\\my-app'
         NODE_OPTIONS = "--openssl-legacy-provider"
     }
     
