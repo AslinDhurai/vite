@@ -4,9 +4,12 @@ pipeline {
     }
 
     environment {
-        REPO_URL = 'https://github.com/your-username/your-repo.git'
+        NODEJS_HOME = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
+        PATH = "${NODEJS_HOME}/bin:${env.PATH}"
+        REPO_URL = 'https://github.com/AslinDhurai/vite.git'
         BRANCH = 'main'
         IIS_SITE_PATH = 'C:\\inetpub\\wwwroot\\my-app' // IIS website physical path
+        NODE_OPTIONS = "--openssl-legacy-provider"
     }
 
     stages {
@@ -22,6 +25,7 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
+                bat 'dir'
                 bat 'npm install'
             }
         }
@@ -35,7 +39,7 @@ pipeline {
         stage('Deploy to IIS') {
             steps {
                 // Stop IIS site (optional)
-                bat 'appcmd stop site "Default Web Site"'
+                // bat 'appcmd stop site "Default Web Site"'
 
                 // Delete old files
                 bat "if exist ${IIS_SITE_PATH} rmdir /s /q ${IIS_SITE_PATH}"
@@ -47,7 +51,7 @@ pipeline {
                 bat "xcopy /E /Y dist\\* ${IIS_SITE_PATH}\\"
 
                 // Start IIS site
-                bat 'appcmd start site "Default Web Site"'
+                // bat 'appcmd start site "Default Web Site"'
             }
         }
     }
