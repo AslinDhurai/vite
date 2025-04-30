@@ -9,6 +9,7 @@ pipeline {
         IIS_SITE_PATH = 'C:\\inetpub\\wwwroot\\my-app'
         NODE_OPTIONS = "--openssl-legacy-provider"
         AGENT1_API_URL = 'http://192.168.52.33:8084'
+        WORKSPACE_PATH = 'C:\\Jenkins\\workspace\\My-Vite' // Add your actual workspace path
     }
     
     stages {
@@ -30,15 +31,35 @@ pipeline {
                                     timeout(time: 15, unit: 'MINUTES') {
                                         bat """
                                             @echo on
-                                            if exist vite rd /s /q vite
-                                            git clone --branch ${BRANCH} ${REPO_URL} vite
-                                            cd vite
+                                            echo Starting deployment process...
+                                            
+                                            echo [1/6] Cleaning existing repo...
+                                            if exist "${WORKSPACE_PATH}\\vite" rd /s /q "${WORKSPACE_PATH}\\vite"
+                                            
+                                            echo [2/6] Cloning repository...
+                                            git clone --branch ${BRANCH} ${REPO_URL} "${WORKSPACE_PATH}\\vite"
+                                            
+                                            echo [3/6] Setting up environment...
+                                            cd "${WORKSPACE_PATH}\\vite"
                                             echo VITE_API_URL=${AGENT1_API_URL} > .env
-                                            npm install && npm run build
-                                            cd..
-                                            if exist "${IIS_SITE_PATH}" rd /s /q "${IIS_SITE_PATH}"
+                                            
+                                            echo [4/6] Installing dependencies...
+                                            npm install
+                                            
+                                            echo [5/6] Building application...
+                                            npm run build
+                                            
+                                            echo [6/6] Deploying to IIS...
+                                            if exist "${IIS_SITE_PATH}" (
+                                                echo Removing existing IIS content...
+                                                rd /s /q "${IIS_SITE_PATH}"
+                                            )
                                             mkdir "${IIS_SITE_PATH}"
-                                            xcopy vite\\dist\\* "${IIS_SITE_PATH}\\" /E /I /Y
+                                            xcopy "${WORKSPACE_PATH}\\vite\\dist\\*" "${IIS_SITE_PATH}\\" /E /I /Y /C
+                                            
+                                            echo Verifying deployment...
+                                            dir "${IIS_SITE_PATH}"
+                                            echo Deployment completed successfully!
                                         """
                                     }
                                 }
@@ -51,14 +72,15 @@ pipeline {
     }
     
     post {
+        always {
+            echo 'Deployment process completed. Check logs for details.'
+        }
         success {
-            echo 'Vite app deployment completed successfully!'
             emailext to: 'demojenkinscicd@gmail.com',
                      subject: "Successful Vite Deployment to ${params.TARGET_AGENT}",
                      body: "Vite application was successfully deployed to selected agents."
         }
         failure {
-            echo 'Some deployments may have failed. Check individual stages for details.'
             emailext to: 'demojenkinscicd@gmail.com',
                      subject: "Partial/Failed Vite Deployment to ${params.TARGET_AGENT}",
                      body: "There were issues deploying the Vite application. Check Jenkins build logs for details."
