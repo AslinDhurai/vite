@@ -102,6 +102,7 @@ def deployReactAppToAgent(Map args) {
     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
         if (!isAgentOnline(agentName)) {
             emailext to: 'demojenkinscicd@gmail.com',
+                     cc: 'annychrizz@gmail.com',
                      subject: "Deployment failed: ${agentName} offline",
                      body: "${agentName} is offline, deployment could not proceed."
             error "${agentName} is offline."
