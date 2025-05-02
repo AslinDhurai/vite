@@ -89,6 +89,16 @@ pipeline {
     post {
         always {
             script {
+                // Unstash and check for any deployed files
+                ['Agent 1', 'Agent 2', 'Agent 3', 'Agent 4', 'Agent 5'].each { agent ->
+                    def name = agent.replaceAll(" ", "-")
+                    try {
+                        unstash "status-deployed-${name}"
+                    } catch (e) {
+                        // No-op if no stash exists
+                    }
+                }
+
                 def deployed = findFiles(glob: 'deployed-*.txt').collect { readFile(it.path).trim() }
                 def failed = findFiles(glob: 'failed-*.txt').collect { readFile(it.path).trim() }
 
@@ -132,8 +142,8 @@ def deployReactAppToAgent(Map args) {
 
                     def nodeJS = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
 
-                    withEnv([
-                        "PATH+NodeJS=${nodeJS}/bin",
+                    withEnv([ 
+                        "PATH+NodeJS=${nodeJS}/bin", 
                         "NODE_OPTIONS=--openssl-legacy-provider"
                     ]) {
                         dir("build-${agentName}") {
@@ -159,6 +169,7 @@ def deployReactAppToAgent(Map args) {
                         }
                     }
                     writeFile file: "deployed-${agentName}.txt", text: "${agentName}\n"
+                    stash name: "status-deployed-${agentName}", includes: "deployed-${agentName}.txt"
                 } catch (Exception e) {
                     writeFile file: "failed-${agentName}.txt", text: "${agentName} (error: ${e.getMessage()})\n"
                     error "Deployment to ${agentName} failed: ${e.getMessage()}"
