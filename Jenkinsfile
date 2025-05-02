@@ -89,13 +89,19 @@ pipeline {
     post {
         always {
             script {
-                // Collect the deployed and failed files and check if they exist
-                def deployed = findFiles(glob: 'deployed-*.txt').collect { readFile(it.path).trim() }
+                // Collect deployed files explicitly
+                def deployedFiles = findFiles(glob: 'deployed-*.txt')
+                def deployed = deployedFiles.collect { readFile(it.path).trim() }
                 def failed = findFiles(glob: 'failed-*.txt').collect { readFile(it.path).trim() }
-                
+
                 // Debugging - Print out deployed and failed files for logging purposes
                 echo "Deployed Files: ${deployed}"
                 echo "Failed Files: ${failed}"
+
+                // Debugging - Stash the deployed files explicitly if they exist
+                if (deployedFiles) {
+                    stash name: 'deployed-files', includes: '**/deployed-*.txt'
+                }
 
                 emailext (
                     to: 'demojenkinscicd@gmail.com',
