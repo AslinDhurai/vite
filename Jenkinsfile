@@ -7,6 +7,8 @@ pipeline {
         NODEJS_HOME = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
         REPO_URL = 'https://github.com/AslinDhurai/vite.git'
         NODE_OPTIONS = "--openssl-legacy-provider"
+        DEPLOYED_AGENTS = ""
+        FAILED_AGENTS = ""
     }
     stages {
         stage('Checkout Code') {
@@ -87,11 +89,30 @@ pipeline {
     }
 
     post {
-        success {
-            echo ':white_check_mark: React app deployment completed!'
-        }
-        failure {
-            echo ':x: Some deployments may have failed. Check individual stages for details.'
+        always {
+            script {
+                def deployed = env.DEPLOYED_AGENTS ? env.DEPLOYED_AGENTS.split(',').collect { it.trim() }.findAll { it } : []
+                def failed = env.FAILED_AGENTS ? env.FAILED_AGENTS.split(',').collect { it.trim() }.findAll { it } : []
+                
+                emailext (
+                    to: 'demojenkinscicd@gmail.com',
+                    subject: "Deployment Summary - ${currentBuild.currentResult}",
+                    body: """
+                        <h2>Deployment Report</h2>
+                        <p><strong>Build:</strong> ${env.JOB_NAME} #${env.BUILD_NUMBER}</p>
+                        <p><strong>Status:</strong> ${currentBuild.currentResult}</p>
+                        
+                        <h3>✅ Successfully Deployed (${deployed.size()})</h3>
+                        ${deployed ? "<ul>${deployed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No successful deployments</p>"}
+                        
+                        <h3>❌ Failed Deployments (${failed.size()})</h3>
+                        ${failed ? "<ul>${failed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No failed deployments</p>"}
+                        
+                        <p>View full logs: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                    """,
+                    mimeType: 'text/html'
+                )
+            }
         }
     }
 }
@@ -101,43 +122,50 @@ def deployReactAppToAgent(Map args) {
 
     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
         if (!isAgentOnline(agentName)) {
+            env.FAILED_AGENTS += "${agentName} (offline), "
             emailext to: 'demojenkinscicd@gmail.com',
                      subject: "Deployment failed: ${agentName} offline",
                      body: "${agentName} is offline, deployment could not proceed."
             error "${agentName} is offline."
         } else {
             node(agentLabel) {
-                // Clean workspace before starting
-                deleteDir()
-                
-                // Get NodeJS installation on the target agent
-                def nodeJS = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
-                
-                withEnv([
-                    "PATH+NodeJS=${nodeJS}/bin",
-                    "NODE_OPTIONS=--openssl-legacy-provider"
-                ]) {
-                    dir("build-${agentName}") {
-                        unstash name: 'source-code'
-                        writeFile file: '.env', text: "VITE_API_URL=${viteApiUrl}"
-                        bat "type .env"
-                        bat "npm install"
-                        bat "npm run build"
-                        stash name: "dist-${agentName}", includes: 'dist/**'
-                    }
+                try {
+                    // Clean workspace before starting
+                    deleteDir()
+                    
+                    // Get NodeJS installation on the target agent
+                    def nodeJS = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
+                    
+                    withEnv([
+                        "PATH+NodeJS=${nodeJS}/bin",
+                        "NODE_OPTIONS=--openssl-legacy-provider"
+                    ]) {
+                        dir("build-${agentName}") {
+                            unstash name: 'source-code'
+                            writeFile file: '.env', text: "VITE_API_URL=${viteApiUrl}"
+                            bat "type .env"
+                            bat "npm install"
+                            bat "npm run build"
+                            stash name: "dist-${agentName}", includes: 'dist/**'
+                        }
 
-                    timeout(time: 2, unit: 'MINUTES') {
-                        dir("deploy-${agentName}") {
-                            unstash name: "dist-${agentName}"
-                            bat """
-                                if exist "C:\\inetpub\\wwwroot\\my-app" (
-                                    rd /s /q "C:\\inetpub\\wwwroot\\my-app"
-                                )
-                                mkdir "C:\\inetpub\\wwwroot\\my-app"
-                                xcopy "dist\\*" "C:\\inetpub\\wwwroot\\my-app" /E /I /Y
-                            """
+                        timeout(time: 2, unit: 'MINUTES') {
+                            dir("deploy-${agentName}") {
+                                unstash name: "dist-${agentName}"
+                                bat """
+                                    if exist "C:\\inetpub\\wwwroot\\my-app" (
+                                        rd /s /q "C:\\inetpub\\wwwroot\\my-app"
+                                    )
+                                    mkdir "C:\\inetpub\\wwwroot\\my-app"
+                                    xcopy "dist\\*" "C:\\inetpub\\wwwroot\\my-app" /E /I /Y
+                                """
+                            }
                         }
                     }
+                    env.DEPLOYED_AGENTS += "${agentName}, "
+                } catch (Exception e) {
+                    env.FAILED_AGENTS += "${agentName} (error: ${e.getMessage()}), "
+                    error "Deployment to ${agentName} failed: ${e.getMessage()}"
                 }
             }
         }
