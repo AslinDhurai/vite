@@ -1,15 +1,23 @@
+def deployedAgentsList = []
+def failedAgentsList = []
+
 pipeline {
     agent { label 'main' }
+
     parameters {
-        choice(name: 'TARGET_AGENT', choices: ['All Agents', 'Agent 1', 'Agent 2', 'Agent 3', 'Agent 4', 'Agent 5'], description: 'Select which agent(s) to deploy to')
+        choice(
+            name: 'TARGET_AGENT',
+            choices: ['All Agents', 'Agent 1', 'Agent 2', 'Agent 3', 'Agent 4', 'Agent 5'],
+            description: 'Select which agent(s) to deploy to'
+        )
     }
+
     environment {
         NODEJS_HOME = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
         REPO_URL = 'https://github.com/AslinDhurai/vite.git'
         NODE_OPTIONS = "--openssl-legacy-provider"
-        DEPLOYED_AGENTS = ""
-        FAILED_AGENTS = ""
     }
+
     stages {
         stage('Checkout Code') {
             steps {
@@ -17,6 +25,7 @@ pipeline {
                 stash name: 'source-code', includes: '**/*'
             }
         }
+
         stage('Deploy to Agents') {
             parallel {
                 stage('Deploy to Agent 1') {
@@ -26,11 +35,14 @@ pipeline {
                             deployReactAppToAgent(
                                 agentLabel: 'windows',
                                 agentName: 'Aslin-agent',
-                                viteApiUrl: 'http://192.168.52.33:8084'
+                                viteApiUrl: 'http://192.168.52.33:8084',
+                                deployedAgentsList: deployedAgentsList,
+                                failedAgentsList: failedAgentsList
                             )
                         }
                     }
                 }
+
                 stage('Deploy to Agent 2') {
                     when { expression { params.TARGET_AGENT == 'Agent 2' || params.TARGET_AGENT == 'All Agents' } }
                     steps {
@@ -38,11 +50,14 @@ pipeline {
                             deployReactAppToAgent(
                                 agentLabel: 'Shahana-Agent',
                                 agentName: 'Shahana-Agent',
-                                viteApiUrl: 'http://192.168.52.84:8084'
+                                viteApiUrl: 'http://192.168.52.84:8084',
+                                deployedAgentsList: deployedAgentsList,
+                                failedAgentsList: failedAgentsList
                             )
                         }
                     }
                 }
+
                 stage('Deploy to Agent 3') {
                     when { expression { params.TARGET_AGENT == 'Agent 3' || params.TARGET_AGENT == 'All Agents' } }
                     steps {
@@ -50,11 +65,14 @@ pipeline {
                             deployReactAppToAgent(
                                 agentLabel: 'Archana-agent',
                                 agentName: 'Archana-agent',
-                                viteApiUrl: 'http://192.168.52.25:8084'
+                                viteApiUrl: 'http://192.168.52.25:8084',
+                                deployedAgentsList: deployedAgentsList,
+                                failedAgentsList: failedAgentsList
                             )
                         }
                     }
                 }
+
                 stage('Deploy to Agent 4') {
                     when { expression { params.TARGET_AGENT == 'Agent 4' || params.TARGET_AGENT == 'All Agents' } }
                     steps {
@@ -62,11 +80,14 @@ pipeline {
                             deployReactAppToAgent(
                                 agentLabel: 'Dharshana-agent',
                                 agentName: 'Dharshana-agent',
-                                viteApiUrl: 'http://192.168.52.56:8084'
+                                viteApiUrl: 'http://192.168.52.56:8084',
+                                deployedAgentsList: deployedAgentsList,
+                                failedAgentsList: failedAgentsList
                             )
                         }
                     }
                 }
+
                 stage('Deploy to Agent 5') {
                     when { expression { params.TARGET_AGENT == 'Agent 5' || params.TARGET_AGENT == 'All Agents' } }
                     steps {
@@ -74,7 +95,9 @@ pipeline {
                             deployReactAppToAgent(
                                 agentLabel: 'Annie-Agent',
                                 agentName: 'Annie-Agent',
-                                viteApiUrl: 'http://192.168.52.171:8084'
+                                viteApiUrl: 'http://192.168.52.171:8084',
+                                deployedAgentsList: deployedAgentsList,
+                                failedAgentsList: failedAgentsList
                             )
                         }
                     }
@@ -82,11 +105,12 @@ pipeline {
             }
         }
     }
+
     post {
         always {
             script {
-                def deployed = env.DEPLOYED_AGENTS ? env.DEPLOYED_AGENTS.split(',').collect { it.trim() }.findAll { it } : []
-                def failed = env.FAILED_AGENTS ? env.FAILED_AGENTS.split(',').collect { it.trim() }.findAll { it } : []
+                def deployed = deployedAgentsList ?: []
+                def failed = failedAgentsList ?: []
 
                 emailext (
                     to: 'demojenkinscicd@gmail.com',
@@ -112,10 +136,12 @@ pipeline {
 }
 
 def deployReactAppToAgent(Map args) {
-    def (agentLabel, agentName, viteApiUrl) = [args.agentLabel, args.agentName, args.viteApiUrl]
+    def (agentLabel, agentName, viteApiUrl, deployedAgentsList, failedAgentsList) =
+        [args.agentLabel, args.agentName, args.viteApiUrl, args.deployedAgentsList, args.failedAgentsList]
+
     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
         if (!isAgentOnline(agentName)) {
-            env.FAILED_AGENTS += "${agentName} (offline), "
+            failedAgentsList << "${agentName} (offline)"
             emailext to: 'demojenkinscicd@gmail.com',
                      subject: "Deployment failed: ${agentName} offline",
                      body: "${agentName} is offline, deployment could not proceed."
@@ -150,9 +176,9 @@ def deployReactAppToAgent(Map args) {
                             }
                         }
                     }
-                    env.DEPLOYED_AGENTS += "${agentName}, "
+                    deployedAgentsList << agentName
                 } catch (Exception e) {
-                    env.FAILED_AGENTS += "${agentName} (error: ${e.getMessage()}), "
+                    failedAgentsList << "${agentName} (error: ${e.getMessage()})"
                     error "Deployment to ${agentName} failed: ${e.getMessage()}"
                 }
             }
