@@ -89,18 +89,13 @@ pipeline {
     post {
         always {
             script {
-                // Unstash and check for any deployed files
-                ['Agent 1', 'Agent 2', 'Agent 3', 'Agent 4', 'Agent 5'].each { agent ->
-                    def name = agent.replaceAll(" ", "-")
-                    try {
-                        unstash "status-deployed-${name}"
-                    } catch (e) {
-                        // No-op if no stash exists
-                    }
-                }
-
+                // Collect the deployed and failed files and check if they exist
                 def deployed = findFiles(glob: 'deployed-*.txt').collect { readFile(it.path).trim() }
                 def failed = findFiles(glob: 'failed-*.txt').collect { readFile(it.path).trim() }
+                
+                // Debugging - Print out deployed and failed files for logging purposes
+                echo "Deployed Files: ${deployed}"
+                echo "Failed Files: ${failed}"
 
                 emailext (
                     to: 'demojenkinscicd@gmail.com',
