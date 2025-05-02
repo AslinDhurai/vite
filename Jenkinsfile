@@ -22,11 +22,12 @@ pipeline {
                     when { expression { params.TARGET_AGENT == 'Agent 1' || params.TARGET_AGENT == 'All Agents' } }
                     steps {
                         script {
-                            deployReactAppToAgent(
+                            def deployResult = deployReactAppToAgent(
                                 agentLabel: 'windows',
                                 agentName: 'Aslin-agent',
                                 viteApiUrl: 'http://192.168.52.33:8084'
                             )
+                            stash name: 'deploy-result-agent-1', includes: "deploy-result-${deployResult}.txt"
                         }
                     }
                 }
@@ -35,11 +36,12 @@ pipeline {
                     when { expression { params.TARGET_AGENT == 'Agent 2' || params.TARGET_AGENT == 'All Agents' } }
                     steps {
                         script {
-                            deployReactAppToAgent(
+                            def deployResult = deployReactAppToAgent(
                                 agentLabel: 'Shahana-Agent',
                                 agentName: 'Shahana-Agent',
                                 viteApiUrl: 'http://192.168.52.84:8084'
                             )
+                            stash name: 'deploy-result-agent-2', includes: "deploy-result-${deployResult}.txt"
                         }
                     }
                 }
@@ -48,11 +50,12 @@ pipeline {
                     when { expression { params.TARGET_AGENT == 'Agent 3' || params.TARGET_AGENT == 'All Agents' } }
                     steps {
                         script {
-                            deployReactAppToAgent(
+                            def deployResult = deployReactAppToAgent(
                                 agentLabel: 'Archana-agent',
                                 agentName: 'Archana-agent',
                                 viteApiUrl: 'http://192.168.52.25:8084'
                             )
+                            stash name: 'deploy-result-agent-3', includes: "deploy-result-${deployResult}.txt"
                         }
                     }
                 }
@@ -61,11 +64,12 @@ pipeline {
                     when { expression { params.TARGET_AGENT == 'Agent 4' || params.TARGET_AGENT == 'All Agents' } }
                     steps {
                         script {
-                            deployReactAppToAgent(
+                            def deployResult = deployReactAppToAgent(
                                 agentLabel: 'Dharshana-agent',
                                 agentName: 'Dharshana-agent',
                                 viteApiUrl: 'http://192.168.52.56:8084'
                             )
+                            stash name: 'deploy-result-agent-4', includes: "deploy-result-${deployResult}.txt"
                         }
                     }
                 }
@@ -74,11 +78,12 @@ pipeline {
                     when { expression { params.TARGET_AGENT == 'Agent 5' || params.TARGET_AGENT == 'All Agents' } }
                     steps {
                         script {
-                            deployReactAppToAgent(
+                            def deployResult = deployReactAppToAgent(
                                 agentLabel: 'Annie-Agent',
                                 agentName: 'Annie-Agent',
                                 viteApiUrl: 'http://192.168.52.171:8084'
                             )
+                            stash name: 'deploy-result-agent-5', includes: "deploy-result-${deployResult}.txt"
                         }
                     }
                 }
@@ -89,20 +94,26 @@ pipeline {
     post {
         always {
             script {
-                // Directly collect results from deployment steps
+                // Initialize empty arrays for results
                 def deployed = []
                 def failed = []
 
-                // Check for deployed and failed status based on files
-                if (fileExists("deployed-Aslin-agent.txt")) deployed.add("Aslin-agent")
-                if (fileExists("deployed-Shahana-Agent.txt")) deployed.add("Shahana-Agent")
-                if (fileExists("deployed-Archana-agent.txt")) deployed.add("Archana-agent")
-                if (fileExists("deployed-Dharshana-agent.txt")) deployed.add("Dharshana-agent")
-                if (fileExists("deployed-Annie-Agent.txt")) deployed.add("Annie-Agent")
+                // Collect all deployment results
+                def deployResults = ['agent-1', 'agent-2', 'agent-3', 'agent-4', 'agent-5']
+                
+                deployResults.each { agent ->
+                    def deployFile = "deploy-result-${agent}.txt"
+                    if (fileExists(deployFile)) {
+                        def result = readFile(deployFile).trim()
+                        if (result == 'SUCCESS') {
+                            deployed.add(agent)
+                        } else {
+                            failed.add(agent)
+                        }
+                    }
+                }
 
-                if (fileExists("failed-Shahana-Agent.txt")) failed.add("Shahana-Agent (offline)")
-
-                // Email the deployment report
+                // Email the summary
                 emailext (
                     to: 'demojenkinscicd@gmail.com',
                     subject: "Deployment Summary - ${currentBuild.currentResult}",
@@ -131,11 +142,7 @@ def deployReactAppToAgent(Map args) {
 
     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
         if (!isAgentOnline(agentName)) {
-            writeFile file: "failed-${agentName}.txt", text: "${agentName} (offline)\n"
-            emailext to: 'demojenkinscicd@gmail.com',
-                     subject: "Deployment failed: ${agentName} offline",
-                     body: "${agentName} is offline, deployment could not proceed."
-            error "${agentName} is offline."
+            return 'FAILED'
         } else {
             node(agentLabel) {
                 try {
@@ -169,10 +176,9 @@ def deployReactAppToAgent(Map args) {
                             }
                         }
                     }
-                    writeFile file: "deployed-${agentName}.txt", text: "${agentName}\n"
+                    return 'SUCCESS'
                 } catch (Exception e) {
-                    writeFile file: "failed-${agentName}.txt", text: "${agentName} (error: ${e.getMessage()})\n"
-                    error "Deployment to ${agentName} failed: ${e.getMessage()}"
+                    return 'FAILED'
                 }
             }
         }
