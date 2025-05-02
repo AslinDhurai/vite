@@ -17,75 +17,34 @@ pipeline {
         }
 
         stage('Deploy to Agents') {
-            parallel {
-                stage('Deploy to Agent 1') {
-                    when { expression { params.TARGET_AGENT == 'Agent 1' || params.TARGET_AGENT == 'All Agents' } }
-                    steps {
-                        script {
-                            def deployResult = deployReactAppToAgent(
-                                agentLabel: 'windows',
-                                agentName: 'Aslin-agent',
-                                viteApiUrl: 'http://192.168.52.33:8084'
-                            )
-                            stash name: 'deploy-result-agent-1', includes: "deploy-result-${deployResult}.txt"
-                        }
-                    }
-                }
+            steps {
+                script {
+                    def agents = [
+                        [label: 'windows',        name: 'Aslin-agent',     ip: '192.168.52.33',  id: 'agent-1'],
+                        [label: 'Shahana-Agent',  name: 'Shahana-Agent',   ip: '192.168.52.84',  id: 'agent-2'],
+                        [label: 'Archana-agent',  name: 'Archana-agent',   ip: '192.168.52.25',  id: 'agent-3'],
+                        [label: 'Dharshana-agent',name: 'Dharshana-agent', ip: '192.168.52.56',  id: 'agent-4'],
+                        [label: 'Annie-Agent',    name: 'Annie-Agent',     ip: '192.168.52.171', id: 'agent-5'],
+                    ]
 
-                stage('Deploy to Agent 2') {
-                    when { expression { params.TARGET_AGENT == 'Agent 2' || params.TARGET_AGENT == 'All Agents' } }
-                    steps {
-                        script {
-                            def deployResult = deployReactAppToAgent(
-                                agentLabel: 'Shahana-Agent',
-                                agentName: 'Shahana-Agent',
-                                viteApiUrl: 'http://192.168.52.84:8084'
-                            )
-                            stash name: 'deploy-result-agent-2', includes: "deploy-result-${deployResult}.txt"
-                        }
-                    }
-                }
+                    def branches = [:]
 
-                stage('Deploy to Agent 3') {
-                    when { expression { params.TARGET_AGENT == 'Agent 3' || params.TARGET_AGENT == 'All Agents' } }
-                    steps {
-                        script {
-                            def deployResult = deployReactAppToAgent(
-                                agentLabel: 'Archana-agent',
-                                agentName: 'Archana-agent',
-                                viteApiUrl: 'http://192.168.52.25:8084'
-                            )
-                            stash name: 'deploy-result-agent-3', includes: "deploy-result-${deployResult}.txt"
-                        }
-                    }
-                }
+                    agents.each { agent ->
+                        if (params.TARGET_AGENT == 'All Agents' || params.TARGET_AGENT == "Agent ${agent.id[-1]}") {
+                            branches["Deploy to ${agent.name}"] = {
+                                def result = deployReactAppToAgent(
+                                    agentLabel: agent.label,
+                                    agentName: agent.name,
+                                    viteApiUrl: "http://${agent.ip}:8084"
+                                )
 
-                stage('Deploy to Agent 4') {
-                    when { expression { params.TARGET_AGENT == 'Agent 4' || params.TARGET_AGENT == 'All Agents' } }
-                    steps {
-                        script {
-                            def deployResult = deployReactAppToAgent(
-                                agentLabel: 'Dharshana-agent',
-                                agentName: 'Dharshana-agent',
-                                viteApiUrl: 'http://192.168.52.56:8084'
-                            )
-                            stash name: 'deploy-result-agent-4', includes: "deploy-result-${deployResult}.txt"
+                                writeFile file: "deploy-result-${agent.id}.txt", text: result
+                                stash name: "deploy-result-${agent.id}", includes: "deploy-result-${agent.id}.txt"
+                            }
                         }
                     }
-                }
 
-                stage('Deploy to Agent 5') {
-                    when { expression { params.TARGET_AGENT == 'Agent 5' || params.TARGET_AGENT == 'All Agents' } }
-                    steps {
-                        script {
-                            def deployResult = deployReactAppToAgent(
-                                agentLabel: 'Annie-Agent',
-                                agentName: 'Annie-Agent',
-                                viteApiUrl: 'http://192.168.52.171:8084'
-                            )
-                            stash name: 'deploy-result-agent-5', includes: "deploy-result-${deployResult}.txt"
-                        }
-                    }
+                    parallel branches
                 }
             }
         }
@@ -94,26 +53,23 @@ pipeline {
     post {
         always {
             script {
-                // Initialize empty arrays for results
                 def deployed = []
                 def failed = []
 
-                // Collect all deployment results
-                def deployResults = ['agent-1', 'agent-2', 'agent-3', 'agent-4', 'agent-5']
-                
-                deployResults.each { agent ->
-                    def deployFile = "deploy-result-${agent}.txt"
-                    if (fileExists(deployFile)) {
-                        def result = readFile(deployFile).trim()
+                def ids = ['agent-1', 'agent-2', 'agent-3', 'agent-4', 'agent-5']
+                ids.each { id ->
+                    def filename = "deploy-result-${id}.txt"
+                    unstash name: "deploy-result-${id}" // will error if the agent wasn't selected
+                    if (fileExists(filename)) {
+                        def result = readFile(filename).trim()
                         if (result == 'SUCCESS') {
-                            deployed.add(agent)
+                            deployed.add(id)
                         } else {
-                            failed.add(agent)
+                            failed.add(id)
                         }
                     }
                 }
 
-                // Email the summary
                 emailext (
                     to: 'demojenkinscicd@gmail.com',
                     subject: "Deployment Summary - ${currentBuild.currentResult}",
@@ -123,10 +79,10 @@ pipeline {
                         <p><strong>Status:</strong> ${currentBuild.currentResult}</p>
 
                         <h3>✅ Successfully Deployed (${deployed.size()})</h3>
-                        ${deployed.size() > 0 ? "<ul>${deployed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No successful deployments</p>"}
+                        ${deployed ? "<ul>${deployed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No successful deployments</p>"}
 
                         <h3>❌ Failed Deployments (${failed.size()})</h3>
-                        ${failed.size() > 0 ? "<ul>${failed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No failed deployments</p>"}
+                        ${failed ? "<ul>${failed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No failed deployments</p>"}
 
                         <p>View full logs: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                     """,
@@ -143,43 +99,43 @@ def deployReactAppToAgent(Map args) {
     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
         if (!isAgentOnline(agentName)) {
             return 'FAILED'
-        } else {
-            node(agentLabel) {
-                try {
-                    deleteDir()
+        }
 
-                    def nodeJS = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
+        node(agentLabel) {
+            try {
+                deleteDir()
+                def nodeJS = tool name: 'NodeJS', type: 'jenkins.plugins.nodejs.tools.NodeJSInstallation'
 
-                    withEnv([ 
-                        "PATH+NodeJS=${nodeJS}/bin", 
-                        "NODE_OPTIONS=--openssl-legacy-provider"
-                    ]) {
-                        dir("build-${agentName}") {
-                            unstash name: 'source-code'
-                            writeFile file: '.env', text: "VITE_API_URL=${viteApiUrl}"
-                            bat "type .env"
-                            bat "npm install"
-                            bat "npm run build"
-                            stash name: "dist-${agentName}", includes: 'dist/**'
-                        }
+                withEnv([
+                    "PATH+NodeJS=${nodeJS}/bin",
+                    "NODE_OPTIONS=--openssl-legacy-provider"
+                ]) {
+                    dir("build-${agentName}") {
+                        unstash name: 'source-code'
+                        writeFile file: '.env', text: "VITE_API_URL=${viteApiUrl}"
+                        bat "type .env"
+                        bat "npm install"
+                        bat "npm run build"
+                        stash name: "dist-${agentName}", includes: 'dist/**'
+                    }
 
-                        timeout(time: 2, unit: 'MINUTES') {
-                            dir("deploy-${agentName}") {
-                                unstash name: "dist-${agentName}"
-                                bat """
-                                    if exist "C:\\inetpub\\wwwroot\\my-app" (
-                                        rd /s /q "C:\\inetpub\\wwwroot\\my-app"
-                                    )
-                                    mkdir "C:\\inetpub\\wwwroot\\my-app"
-                                    xcopy "dist\\*" "C:\\inetpub\\wwwroot\\my-app" /E /I /Y
-                                """
-                            }
+                    timeout(time: 2, unit: 'MINUTES') {
+                        dir("deploy-${agentName}") {
+                            unstash name: "dist-${agentName}"
+                            bat """
+                                if exist "C:\\inetpub\\wwwroot\\my-app" (
+                                    rd /s /q "C:\\inetpub\\wwwroot\\my-app"
+                                )
+                                mkdir "C:\\inetpub\\wwwroot\\my-app"
+                                xcopy "dist\\*" "C:\\inetpub\\wwwroot\\my-app" /E /I /Y
+                            """
                         }
                     }
-                    return 'SUCCESS'
-                } catch (Exception e) {
-                    return 'FAILED'
                 }
+                return 'SUCCESS'
+            } catch (Exception e) {
+                echo "Deployment failed for ${agentName}: ${e}"
+                return 'FAILED'
             }
         }
     }
