@@ -50,45 +50,79 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            script {
-                def deployed = []
-                def failed = []
+//     post {
+//         always {
+//             script {
+//                 def deployed = []
+//                 def failed = []
 
-                def ids = ['agent-1', 'agent-2', 'agent-3', 'agent-4', 'agent-5']
-                ids.each { id ->
-                    def filename = "deploy-result-${id}.txt"
-                    unstash name: "deploy-result-${id}" // will error if the agent wasn't selected
-                    if (fileExists(filename)) {
-                        def result = readFile(filename).trim()
-                        if (result == 'SUCCESS') {
-                            deployed.add(id)
-                        } else {
-                            failed.add(id)
-                        }
-                    }
-                }
+//                 def ids = ['agent-1', 'agent-2', 'agent-3', 'agent-4', 'agent-5']
+//                 ids.each { id ->
+//                     def filename = "deploy-result-${id}.txt"
+//                     unstash name: "deploy-result-${id}" // will error if the agent wasn't selected
+//                     if (fileExists(filename)) {
+//                         def result = readFile(filename).trim()
+//                         if (result == 'SUCCESS') {
+//                             deployed.add(id)
+//                         } else {
+//                             failed.add(id)
+//                         }
+//                     }
+//                 }
 
-                emailext (
-                    to: 'demojenkinscicd@gmail.com',
-                    subject: "Deployment Summary - ${currentBuild.currentResult}",
-                    body: """
+//                 emailext (
+//                     to: 'demojenkinscicd@gmail.com',
+//                     subject: "Deployment Summary - ${currentBuild.currentResult}",
+//                     body: """
+//                         <h2>Deployment Report</h2>
+//                         <p><strong>Build:</strong> ${env.JOB_NAME} #${env.BUILD_NUMBER}</p>
+//                         <p><strong>Status:</strong> ${currentBuild.currentResult}</p>
+
+//                         <h3>✅ Successfully Deployed (${deployed.size()})</h3>
+//                         ${deployed ? "<ul>${deployed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No successful deployments</p>"}
+
+//                         <h3>❌ Failed Deployments (${failed.size()})</h3>
+//                         ${failed ? "<ul>${failed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No failed deployments</p>"}
+
+//                         <p>View full logs: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+//                     """,
+//                     mimeType: 'text/html'
+//                 )
+//             }
+//         }
+//     }
+// }
+post {
+    always {
+        script {
+            def deployed = env.DEPLOYED_AGENTS ? env.DEPLOYED_AGENTS.split(',').collect { it.trim() }.findAll { it } : []
+            def failed = env.FAILED_AGENTS ? env.FAILED_AGENTS.split(',').collect { it.trim() }.findAll { it } : []
+
+            def deployedCount = deployed.size()
+            def failedCount = failed.size()
+
+            emailext (
+                to: 'demojenkinscicd@gmail.com',
+                subject: "Deployment Summary - ${currentBuild.currentResult}",
+                body: """
+                    <html>
+                    <body>
                         <h2>Deployment Report</h2>
                         <p><strong>Build:</strong> ${env.JOB_NAME} #${env.BUILD_NUMBER}</p>
                         <p><strong>Status:</strong> ${currentBuild.currentResult}</p>
-
-                        <h3>✅ Successfully Deployed (${deployed.size()})</h3>
-                        ${deployed ? "<ul>${deployed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No successful deployments</p>"}
-
-                        <h3>❌ Failed Deployments (${failed.size()})</h3>
-                        ${failed ? "<ul>${failed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No failed deployments</p>"}
-
-                        <p>View full logs: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
-                    """,
-                    mimeType: 'text/html'
-                )
-            }
+                        
+                        <h3 style="color:green;">✅ Successfully Deployed Agents: ${deployedCount}</h3>
+                        ${deployedCount > 0 ? "<ul>${deployed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No successful deployments</p>"}
+                        
+                        <h3 style="color:red;">❌ Failed Deployments: ${failedCount}</h3>
+                        ${failedCount > 0 ? "<ul>${failed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No failed deployments</p>"}
+                        
+                        <p><a href="${env.BUILD_URL}">View Full Build Logs</a></p>
+                    </body>
+                    </html>
+                """,
+                mimeType: 'text/html'
+            )
         }
     }
 }
