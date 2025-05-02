@@ -89,20 +89,20 @@ pipeline {
     post {
         always {
             script {
-                // Collect deployed files explicitly
-                def deployedFiles = findFiles(glob: 'deployed-*.txt')
-                def deployed = deployedFiles.collect { readFile(it.path).trim() }
-                def failed = findFiles(glob: 'failed-*.txt').collect { readFile(it.path).trim() }
+                // Directly collect results from deployment steps
+                def deployed = []
+                def failed = []
 
-                // Debugging - Print out deployed and failed files for logging purposes
-                echo "Deployed Files: ${deployed}"
-                echo "Failed Files: ${failed}"
+                // Check for deployed and failed status based on files
+                if (fileExists("deployed-Aslin-agent.txt")) deployed.add("Aslin-agent")
+                if (fileExists("deployed-Shahana-Agent.txt")) deployed.add("Shahana-Agent")
+                if (fileExists("deployed-Archana-agent.txt")) deployed.add("Archana-agent")
+                if (fileExists("deployed-Dharshana-agent.txt")) deployed.add("Dharshana-agent")
+                if (fileExists("deployed-Annie-Agent.txt")) deployed.add("Annie-Agent")
 
-                // Debugging - Stash the deployed files explicitly if they exist
-                if (deployedFiles) {
-                    stash name: 'deployed-files', includes: '**/deployed-*.txt'
-                }
+                if (fileExists("failed-Shahana-Agent.txt")) failed.add("Shahana-Agent (offline)")
 
+                // Email the deployment report
                 emailext (
                     to: 'demojenkinscicd@gmail.com',
                     subject: "Deployment Summary - ${currentBuild.currentResult}",
@@ -112,10 +112,10 @@ pipeline {
                         <p><strong>Status:</strong> ${currentBuild.currentResult}</p>
 
                         <h3>✅ Successfully Deployed (${deployed.size()})</h3>
-                        ${deployed ? "<ul>${deployed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No successful deployments</p>"}
+                        ${deployed.size() > 0 ? "<ul>${deployed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No successful deployments</p>"}
 
                         <h3>❌ Failed Deployments (${failed.size()})</h3>
-                        ${failed ? "<ul>${failed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No failed deployments</p>"}
+                        ${failed.size() > 0 ? "<ul>${failed.collect { "<li>${it}</li>" }.join('')}</ul>" : "<p>No failed deployments</p>"}
 
                         <p>View full logs: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                     """,
@@ -170,7 +170,6 @@ def deployReactAppToAgent(Map args) {
                         }
                     }
                     writeFile file: "deployed-${agentName}.txt", text: "${agentName}\n"
-                    stash name: "status-deployed-${agentName}", includes: "deployed-${agentName}.txt"
                 } catch (Exception e) {
                     writeFile file: "failed-${agentName}.txt", text: "${agentName} (error: ${e.getMessage()})\n"
                     error "Deployment to ${agentName} failed: ${e.getMessage()}"
