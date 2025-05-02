@@ -142,7 +142,7 @@ pipeline {
 
                 // Send summary email
                 emailext(
-                    to: 'demojenkinscicd@gmail.com, annychrizz@gmail.com',
+                    to: 'demojenkinscicd@gmail.com, manivannan.pa@capestart.com',
                     subject: subject,
                     body: body,
                     mimeType: 'text/html'
